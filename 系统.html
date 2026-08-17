@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统3.1.2</title>
+    <style>
+        :root { 
+            --icon-size: 80px; --ui-scale: 1; 
+            --taskbar-color: rgba(0,0,0,0.4); 
+            --icon-text-color: #ffffff; 
+        }
+        
+        body { margin: 0; background: #2c3e50; height: 100vh; overflow: hidden; font-family: sans-serif; user-select: none; transition: background 0.3s; }
+        #boot-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; color: #0f0; padding: 20px; z-index: 9999; font-family: monospace; }
+
+        #desktop { padding: 40px; display: flex; flex-wrap: wrap; gap: 40px; align-content: flex-start; }
+        .icon-container { width: var(--icon-size); text-align: center; color: var(--icon-text-color); cursor: pointer; padding: 10px; transition: background 0.2s; }
+        .icon-container:hover { background: rgba(255,255,255,0.2); border-radius: 12px; }
+        .icon-box { font-size: calc(var(--icon-size) / 2); }
+        .icon-label { font-size: 14px; margin-top: 5px; }
+
+        #taskbar { position: absolute; bottom: 0; width: 100%; height: 60px; background: var(--taskbar-color); backdrop-filter: blur(10px); color: var(--icon-text-color); display: flex; align-items: center; padding: 0 20px; z-index: 100; border-top: 1px solid rgba(255,255,255,0.1); }
+        
+        .window { 
+            position: absolute; top: 80px; left: 100px; min-width: 300px; background: #fdfdfd; border-radius: 8px; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3); display: none; z-index: 50; 
+            transition: opacity 0.3s ease; opacity: 0; pointer-events: none;
+            transform: scale(var(--ui-scale)); transform-origin: top left;
+        }
+        .title-bar { background: #e0e0e0; padding: 15px; cursor: move; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { width: 16px; height: 16px; background: #ff5f56; border-radius: 50%; cursor: pointer; }
+        
+        #menu { position: absolute; bottom: 60px; left: 0; width: 150px; background: rgba(255,255,255,0.95); border-radius: 8px 8px 0 0; display: none; z-index: 99; transition: opacity 0.3s ease; opacity: 0; pointer-events: none; }
+        .menu-item { padding: 12px; border-bottom: 1px solid #ddd; cursor: pointer; }
+        
+        #shutdown-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; display: none; z-index: 999; flex-direction: column; justify-content: center; align-items: center; color: white; opacity: 0; transition: opacity 1s ease; }
+        .power-text-btn { margin-top: 30px; cursor: pointer; font-size: 18px; color: #888; text-decoration: underline; }
+        .power-text-btn:hover { color: #fff; }
+
+        /* 监视器美化 */
+        .monitor-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px; }
+        .monitor-card { background: #f4f4f4; padding: 10px; border-radius: 6px; text-align: center; }
+        .monitor-value { font-size: 18px; font-weight: bold; color: #2c3e50; }
+    </style>
+</head>
+<body onclick="updateMonitor()">
+
+    <div id="boot-layer">Initializing System...</div>
+
+    <div id="desktop">
+        <div class="icon-container" onclick="openApp('win-settings')"><div class="icon-box">⚙️</div><div class="icon-label">设置</div></div>
+        <div class="icon-container" onclick="openApp('win-gallery')"><div class="icon-box">🖼️</div><div class="icon-label">媒体</div></div>
+        <div class="icon-container" onclick="openApp('win-monitor')"><div class="icon-box">📊</div><div class="icon-label">监视器</div></div>
+        <div class="icon-container" onclick="openApp('win-music')"><div class="icon-box">🎵</div><div class="icon-label">音乐</div></div>
+        <div class="icon-container" onclick="openApp('win-calc')"><div class="icon-box">🧮</div><div class="icon-label">计算器</div></div>
+    </div>
+
+    <div id="taskbar"><div onclick="toggleMenu()" style="cursor: pointer;">☰ 开始</div></div>
+    
+    <div id="menu">
+        <div class="menu-item" onclick="openApp('win-settings'); toggleMenu()">⚙️ 系统设置</div>
+        <div class="menu-item" onclick="openApp('win-gallery'); toggleMenu()">🖼️ 媒体中心</div>
+        <div class="menu-item" onclick="openApp('win-monitor'); toggleMenu()">📊 资源监视器</div>
+        <div class="menu-item" onclick="openApp('win-music'); toggleMenu()">🎵 音乐播放器</div>
+        <div class="menu-item" onclick="openApp('win-calc'); toggleMenu()">🧮 计算器</div>
+        <div class="menu-item" onclick="startShutdown()">🔑 关机</div>
+    </div>
+
+    <div class="window" id="win-settings">
+        <div class="title-bar" onmousedown="initDrag(event, 'win-settings')" ontouchstart="initDrag(event, 'win-settings')">
+            <span>系统设置</span><div class="close-btn" onclick="closeWin('win-settings')"></div>
+        </div>
+        <div style="padding:20px; line-height: 2.5;">
+        <strong>版本号X-MO_MDSGX3.0</strong>
+        <hr>
+            <div><input type="checkbox" id="blur-check" checked onchange="toggleBlur(this)"> 开启毛玻璃</div>
+            <div>图标大小: <input type="range" id="icon-size-input" min="50" max="150" value="80" oninput="changeIconSize(this.value)"></div>
+            <div>窗口缩放: <input type="range" id="scale-input" min="0.8" max="1.5" step="0.1" value="1" oninput="changeScale(this.value)"></div>
+            <hr>
+            <strong>颜色设置:</strong>
+            <div>桌面背景: <input type="color" id="bg-color" value="#2c3e50" oninput="document.body.style.backgroundColor = this.value"></div>
+            <div>状态栏颜色: <input type="color" id="taskbar-color-input" value="#000000" oninput="updateTaskbar(this.value)"></div>
+            <div>系统字体色: <input type="color" id="text-color-input" value="#ffffff" oninput="updateIconText(this.value)"></div>
+            <button onclick="resetSettings()">恢复默认</button>
+        </div>
+    </div>
+
+    <div class="window" id="win-gallery">
+        <div class="title-bar" onmousedown="initDrag(event, 'win-gallery')" ontouchstart="initDrag(event, 'win-gallery')">
+            <span>媒体中心</span><div class="close-btn" onclick="closeWin('win-gallery')"></div>
+        </div>
+        <div style="padding:10px;">
+            <input type="file" accept="image/*,video/*" onchange="previewMedia(this, 'media-view')">
+            <div id="media-view" style="width:100%; margin-top:10px;"></div>
+        </div>
+    </div>
+
+    <div class="window" id="win-monitor">
+        <div class="title-bar" onmousedown="initDrag(event, 'win-monitor')" ontouchstart="initDrag(event, 'win-monitor')">
+            <span>资源监视器</span><div class="close-btn" onclick="closeWin('win-monitor')"></div>
+        </div>
+        <div class="monitor-body">
+            <div class="monitor-card">
+                <div>CPU</div>
+                <div class="monitor-value"><span id="cpu-val">0</span>%</div>
+            </div>
+            <div class="monitor-card">
+                <div>内存</div>
+                <div class="monitor-value"><span id="ram-val">0</span> MB</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="window" id="win-music">
+        <div class="title-bar" onmousedown="initDrag(event, 'win-music')" ontouchstart="initDrag(event, 'win-music')">
+            <span>音乐播放器</span><div class="close-btn" onclick="closeWin('win-music')"></div>
+        </div>
+        <div style="padding:20px;">
+            <input type="file" accept="audio/*" onchange="previewMedia(this, 'music-view')">
+            <div id="music-view" style="margin-top:10px;"></div>
+        </div>
+    </div>
+
+    <div class="window" id="win-calc">
+        <div class="title-bar" onmousedown="initDrag(event, 'win-calc')" ontouchstart="initDrag(event, 'win-calc')">
+            <span>计算器</span><div class="close-btn" onclick="closeWin('win-calc')"></div>
+        </div>
+        <div style="padding:20px;">
+            <input type="text" id="calc-display" style="width:90%; height:30px; margin-bottom:10px; text-align: right;" readonly>
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:5px;">
+                <button onclick="cVal('1')">1</button><button onclick="cVal('2')">2</button><button onclick="cVal('3')">3</button><button onclick="cVal('+')">+</button>
+                <button onclick="cVal('4')">4</button><button onclick="cVal('5')">5</button><button onclick="cVal('6')">6</button><button onclick="cVal('-')">-</button>
+                <button onclick="cVal('7')">7</button><button onclick="cVal('8')">8</button><button onclick="cVal('9')">9</button><button onclick="cVal('*')">*</button>
+                <button onclick="calcRes()">=</button><button onclick="cVal('0')">0</button><button onclick="cClear()">C</button><button onclick="cVal('/')">/</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="shutdown-screen">
+        <div id="shutdown-text">正在关机...</div>
+        <div class="power-text-btn" id="boot-btn" style="display:none;" onclick="location.reload()">开机</div>
+    </div>
+
+    <script>
+        function cVal(v) { document.getElementById('calc-display').value += v; }
+        function cClear() { document.getElementById('calc-display').value = ''; }
+        function calcRes() { try { document.getElementById('calc-display').value = eval(document.getElementById('calc-display').value); } catch { document.getElementById('calc-display').value = 'Error'; } }
+
+        function resetSettings() {
+            document.body.style.backgroundColor = '#2c3e50';
+            document.documentElement.style.setProperty('--taskbar-color', 'rgba(0,0,0,0.4)');
+            document.documentElement.style.setProperty('--icon-text-color', '#ffffff');
+            document.documentElement.style.setProperty('--icon-size', '80px');
+            document.documentElement.style.setProperty('--ui-scale', '1');
+            document.getElementById('bg-color').value = '#2c3e50';
+            document.getElementById('taskbar-color-input').value = '#000000';
+            document.getElementById('text-color-input').value = '#ffffff';
+            document.getElementById('icon-size-input').value = '80';
+            document.getElementById('scale-input').value = '1';
+            document.getElementById('blur-check').checked = true;
+        }
+
+        function updateTaskbar(color) { document.documentElement.style.setProperty('--taskbar-color', color); }
+        function updateIconText(color) { document.documentElement.style.setProperty('--icon-text-color', color); }
+
+        const logs = ["Checking hardware...", "Loading drivers...", "Mounting volumes...", "System ready."];
+        let idx = 0;
+        const timer = setInterval(() => {
+            document.getElementById('boot-layer').innerHTML += "<br>> " + logs[idx++];
+            if (idx >= logs.length) { clearInterval(timer); setTimeout(() => { document.getElementById('boot-layer').style.display = 'none'; }, 800); }
+        }, 500);
+
+        function updateMonitor() {
+            const cpu = document.getElementById('cpu-val');
+            const ram = document.getElementById('ram-val');
+            setTimeout(() => {
+                cpu.innerText = Math.floor(Math.random() * 95 + 5);
+                ram.innerText = Math.floor(Math.random() * 4096);
+                setTimeout(() => { cpu.innerText = "0"; ram.innerText = "0"; }, 1000);
+            }, 500);
+        }
+
+        function changeIconSize(val) { document.documentElement.style.setProperty('--icon-size', val + 'px'); }
+        function changeScale(val) { document.documentElement.style.setProperty('--ui-scale', val); }
+
+        function initDrag(e, id) {
+            const win = document.getElementById(id);
+            let pX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            let pY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            document.onmousemove = document.ontouchmove = (e) => {
+                let cX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                let cY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                win.style.top = (win.offsetTop - (pY - cY)) + "px";
+                win.style.left = (win.offsetLeft - (pX - cX)) + "px";
+                pX = cX; pY = cY;
+            };
+            document.onmouseup = document.ontouchend = () => { document.onmousemove = document.ontouchmove = null; };
+        }
+
+        function openApp(id) { const w = document.getElementById(id); w.style.display = 'block'; w.style.pointerEvents = 'auto'; setTimeout(() => { w.style.opacity = '1'; }, 10); }
+        function closeWin(id) { const w = document.getElementById(id); w.style.opacity = '0'; w.style.pointerEvents = 'none'; setTimeout(() => { w.style.display = 'none'; }, 300); }
+        function toggleMenu() { const m = document.getElementById('menu'); if (m.style.display === 'block') { m.style.opacity = '0'; m.style.pointerEvents = 'none'; setTimeout(() => { m.style.display = 'none'; }, 300); } else { m.style.display = 'block'; m.style.pointerEvents = 'auto'; setTimeout(() => { m.style.opacity = '1'; }, 10); } }
+        function toggleBlur(c) { 
+            const t = document.getElementById('taskbar'); 
+            t.style.backdropFilter = c.checked ? "blur(10px)" : "none"; 
+            t.style.background = c.checked ? "var(--taskbar-color)" : "rgba(0,0,0,0.8)"; 
+        }
+        
+        function previewMedia(i, targetId) { 
+            if(i.files && i.files[0]) { 
+                const file = i.files[0];
+                const container = document.getElementById(targetId);
+                container.innerHTML = ''; 
+                const r = new FileReader(); 
+                r.onload = (e) => { 
+                    let el;
+                    if (file.type.startsWith('image/')) { el = document.createElement('img'); el.src = e.target.result; el.style.width = '100%'; }
+                    else if (file.type.startsWith('video/')) { el = document.createElement('video'); el.src = e.target.result; el.controls = true; el.style.width = '100%'; }
+                    else if (file.type.startsWith('audio/')) { el = document.createElement('audio'); el.src = e.target.result; el.controls = true; }
+                    container.appendChild(el);
+                }; 
+                r.readAsDataURL(file); 
+            } 
+        }
+        
+        function startShutdown() { 
+            document.getElementById('menu').style.display = 'none'; 
+            const s = document.getElementById('shutdown-screen'); 
+            s.style.display = 'flex'; 
+            setTimeout(() => { s.style.opacity = '1'; }, 50);
+            setTimeout(() => { document.getElementById('shutdown-text').innerText = "系统静默"; document.getElementById('boot-btn').style.display = 'block'; }, 2000);
+        }
+    </script>
+</body>
+</html>
